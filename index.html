@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>IA Escolar PRO</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500&family=Poppins&display=swap" rel="stylesheet">
+
+<style>
+body {
+  margin: 0;
+  font-family: Poppins;
+  color: white;
+  overflow: hidden;
+}
+
+/* FONDO ANIMADO */
+body::before {
+  content: "";
+  position: fixed;
+  width: 100%;
+  height: 200%;
+  background: linear-gradient(180deg, #000, #222, #fff, #222, #000);
+  animation: fondo 12s linear infinite;
+  z-index: -1;
+}
+@keyframes fondo {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-50%); }
+}
+
+/* HEADER */
+header {
+  font-family: Orbitron;
+  text-align: center;
+  padding: 15px;
+  background: rgba(0,0,0,0.7);
+}
+#reloj {
+  position: absolute;
+  right: 20px;
+  top: 15px;
+  font-size: 14px;
+}
+
+/* CHAT */
+#chat {
+  height: 70vh;
+  overflow-y: auto;
+  padding: 20px;
+}
+.mensaje {
+  padding: 10px;
+  margin: 10px;
+  border-radius: 10px;
+  max-width: 60%;
+}
+.usuario { background: #333; margin-left: auto; }
+.ia { background: #111; }
+
+/* INPUT */
+#inputArea {
+  display: flex;
+  padding: 10px;
+}
+input {
+  flex: 1;
+  padding: 10px;
+  border: 2px solid #00ff88;
+  background: black;
+  color: white;
+  box-shadow: 0 0 10px #00ff88;
+}
+button {
+  margin-left: 10px;
+  padding: 10px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+button:hover { transform: scale(1.1); }
+
+/* PANEL DERECHO */
+#panel {
+  position: fixed;
+  right: -350px;
+  top: 0;
+  width: 350px;
+  height: 100%;
+  background: #111;
+  transition: 0.4s;
+  padding: 15px;
+}
+#panel.abierto { right: 0; }
+textarea {
+  width: 100%;
+  height: 200px;
+  background: black;
+  color: white;
+  border: 2px solid #00ff88;
+  box-shadow: 0 0 10px #00ff88;
+}
+
+/* PANEL IZQUIERDO */
+#notasPanel {
+  position: fixed;
+  left: -320px;
+  top: 0;
+  width: 320px;
+  height: 100%;
+  background: white;
+  color: black;
+  transition: 0.4s;
+  padding: 15px;
+}
+#notasPanel.abierto { left: 0; }
+
+/* BOTONES LATERALES */
+#abrirNotas {
+  position: fixed;
+  left: 0;
+  top: 50%;
+  background: white;
+  color: black;
+  padding: 10px;
+  cursor: pointer;
+}
+
+/* INPUT NOTAS */
+.notas input, .notas textarea {
+  width: 100%;
+  margin: 6px 0;
+  padding: 8px;
+  border-radius: 6px;
+}
+.notaItem {
+  background: #f1f1f1;
+  margin: 8px 0;
+  padding: 10px;
+  border-radius: 8px;
+}
+
+/* NOTIFICACION */
+#nube {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: white;
+  color: black;
+  padding: 15px;
+  border-radius: 20px;
+  display: none;
+}
+
+/* GOTITA */
+@keyframes gota {
+  0% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.5) translateY(50px); }
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  IA ESCOLAR PRO
+  <span id="reloj"></span>
+</header>
+
+<div id="chat"></div>
+
+<div id="inputArea">
+  <input id="pregunta" placeholder="Pregunta...">
+  <button onclick="enviar()">Enviar</button>
+  <button onclick="abrirPanel()">Texto</button>
+</div>
+
+<!-- PANEL DERECHO -->
+<div id="panel">
+  <h3>Texto IA</h3>
+  <textarea id="texto"></textarea>
+  <button onclick="guardarTexto()">Guardar</button>
+</div>
+
+<!-- BOTON NOTAS -->
+<div id="abrirNotas" onclick="toggleNotas()">📒</div>
+
+<!-- PANEL NOTAS -->
+<div id="notasPanel">
+  <div style="display:flex; justify-content:space-between;">
+    <h3>Bloc de notas</h3>
+    <button onclick="cerrarNotas()">❌</button>
+  </div>
+
+  <div class="notas">
+    <input id="fecha" placeholder="Fecha">
+    <input id="hora" placeholder="Hora">
+    <input id="lugar" placeholder="Lugar">
+    <textarea id="infoNota" placeholder="Información"></textarea>
+    <input id="autor" placeholder="Autor">
+    <button onclick="guardarNota()">Guardar</button>
+  </div>
+
+  <h4>Notas guardadas:</h4>
+  <div id="listaNotas"></div>
+</div>
+
+<div id="nube">☁ Información Guardada</div>
+
+<script>
+let textoGuardado = "";
+let notas = [];
+
+/* SONIDO */
+function sonido(){
+  let audio = new Audio("https://actions.google.com/sounds/v1/notifications/notification_simple-02.mp3");
+  audio.play();
+}
+
+/* RELOJ */
+setInterval(()=>{
+  let hora = new Date().toLocaleTimeString("es-AR", {
+    timeZone: "America/Argentina/Buenos_Aires"
+  });
+  document.getElementById("reloj").innerText = hora;
+},1000);
+
+/* PANEL DERECHO */
+function abrirPanel(){
+  document.getElementById("panel").classList.toggle("abierto");
+}
+function guardarTexto(){
+  textoGuardado = document.getElementById("texto").value;
+  mostrarNube();
+}
+
+/* IA */
+function limpiar(t){return t.toLowerCase().replace(/[^\w\s]/g,"");}
+function responder(p){
+  let oraciones = textoGuardado.split(".");
+  let mejor="",scoreMax=0;
+
+  for(let o of oraciones){
+    let score=0;
+    let palabrasP = limpiar(p).split(" ");
+    let palabrasO = limpiar(o).split(" ");
+
+    for(let palabra of palabrasP){
+      if(palabrasO.includes(palabra)) score++;
+    }
+
+    if(score>scoreMax){scoreMax=score; mejor=o;}
+  }
+  return mejor || "No encontré respuesta 😅";
+}
+
+/* CHAT */
+function agregarMensaje(txt,tipo){
+  let div=document.createElement("div");
+  div.className="mensaje "+tipo;
+  div.innerText=txt;
+  chat.appendChild(div);
+  chat.scrollTop=chat.scrollHeight;
+  sonido();
+}
+
+function enviar(){
+  let p=document.getElementById("pregunta").value;
+  if(!p)return;
+
+  agregarMensaje(p,"usuario");
+
+  setTimeout(()=>{
+    agregarMensaje(responder(p),"ia");
+  },700);
+
+  document.getElementById("pregunta").value="";
+}
+
+/* NOTAS */
+function toggleNotas(){
+  document.getElementById("notasPanel").classList.toggle("abierto");
+}
+function cerrarNotas(){
+  document.getElementById("notasPanel").classList.remove("abierto");
+}
+
+function guardarNota(){
+  let nota={
+    fecha:fecha.value,
+    hora:hora.value,
+    lugar:lugar.value,
+    info:infoNota.value,
+    autor:autor.value
+  };
+  notas.push(nota);
+  mostrarNotas();
+  mostrarNube();
+
+  fecha.value=hora.value=lugar.value=infoNota.value=autor.value="";
+}
+
+function mostrarNotas(){
+  let cont=listaNotas;
+  cont.innerHTML="";
+  notas.forEach(n=>{
+    let div=document.createElement("div");
+    div.className="notaItem";
+    div.innerHTML=`<b>${n.fecha} ${n.hora}</b><br>📍 ${n.lugar}<br>${n.info}<br>✍ ${n.autor}`;
+    cont.appendChild(div);
+  });
+}
+
+/* NOTIFICACION */
+function mostrarNube(){
+  let n=document.getElementById("nube");
+  n.style.display="block";
+  sonido();
+
+  setTimeout(()=>{ n.style.animation="gota 1s forwards"; },800);
+  setTimeout(()=>{ n.style.display="none"; n.style.animation=""; },1800);
+}
+</script>
+
+</body>
+</html>
